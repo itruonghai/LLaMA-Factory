@@ -74,23 +74,30 @@ def load_tokenizer(model_args: "ModelArguments") -> "TokenizerModule":
     Note: including inplace operation of model_args.
     """
     init_kwargs = _get_init_kwargs(model_args)
-    try:
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_args.model_name_or_path,
-            use_fast=model_args.use_fast_tokenizer,
-            split_special_tokens=model_args.split_special_tokens,
-            padding_side="right",
-            **init_kwargs,
-        )
-    except ValueError:  # try the fast one
-        tokenizer = AutoTokenizer.from_pretrained(
-            model_args.model_name_or_path,
-            use_fast=True,
-            padding_side="right",
-            **init_kwargs,
-        )
-    except Exception as e:
-        raise OSError("Failed to load tokenizer.") from e
+    config = load_config(model_args)
+    is_florence2 = getattr(config, "model_type", None) == 'florence2'
+    if is_florence2:
+        # Florence-2 has a custom tokenizer, see:
+        # https://huggingface.co/microsoft/Florence-2-base-ft/blob/main/processing_florence2.py#L85
+        tokenizer = AutoProcessor.from_pretrained(model_args.model_name_or_path, **init_kwargs).tokenizer
+    else:
+        try:
+            tokenizer = AutoTokenizer.from_pretrained(
+                model_args.model_name_or_path,
+                use_fast=model_args.use_fast_tokenizer,
+                split_special_tokens=model_args.split_special_tokens,
+                padding_side="right",
+                **init_kwargs,
+                )
+        except ValueError:  # try the fast one
+            tokenizer = AutoTokenizer.from_pretrained(
+                model_args.model_name_or_path,
+                use_fast=True,
+                padding_side="right",
+                **init_kwargs,
+            )
+        except Exception as e:
+            raise OSError("Failed to load tokenizer.") from e
 
     patch_tokenizer(tokenizer, model_args)
     try:

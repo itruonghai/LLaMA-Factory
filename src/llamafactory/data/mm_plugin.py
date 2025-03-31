@@ -613,6 +613,50 @@ class LlavaNextVideoPlugin(BasePlugin):
 
         return messages
 
+@dataclass
+class Florence2Plugin(BasePlugin):
+    @override
+    def process_messages(
+        self,
+        messages: list[dict[str, str]],
+        images: list["ImageInput"],
+        videos: list["VideoInput"],
+        audios: list["AudioInput"],
+        processor: Optional["MMProcessor"],
+    ) -> list[dict[str, str]]:
+        r"""
+        Pre-processes input messages before tokenization for VLMs.
+        """
+        # The predefined tasks in florence2 have specific prompt words. https://huggingface.co/microsoft/Florence-2-base-ft/blob/9803f52844ec1ae5df004e6089262e9a23e527fd/processing_florence2.py#L112
+        # modeling_florence2.py will concat image feature and text features. https://huggingface.co/microsoft/Florence-2-base-ft/blob/9803f52844ec1ae5df004e6089262e9a23e527fd/modeling_florence2.py#L2737
+        self._validate_input(processor, images, videos, audios)
+        for message in messages:
+            if message["role"] == "system":
+                raise ValueError("florence2 does not support system messages.")
+
+            if message["role"] == "user":
+                message["content"] = processor._construct_prompts([message["content"]])[0]
+
+        if len(messages) != 2:
+            raise ValueError(f"florence2 only support two messages(1 round): {len(messages)}")
+        return messages
+
+    @override
+    def get_mm_inputs(
+        self,
+        images: list["ImageInput"],
+        videos: list["VideoInput"],
+        audios: list["AudioInput"],
+        imglens: list[int],
+        vidlens: list[int],
+        audlens: list[int],
+        batch_ids: list[list[int]],
+        processor: Optional["MMProcessor"],
+    ) -> dict[str, Union[list[int], "torch.Tensor"]]:
+        self._validate_input(processor, images, videos, audios)
+        return self._get_mm_inputs(images, videos, audios, processor)
+
+
 
 @dataclass
 class MiniCPMVPlugin(BasePlugin):
@@ -1517,6 +1561,7 @@ PLUGINS = {
     "qwen2_omni": Qwen2OmniPlugin,
     "qwen2_vl": Qwen2VLPlugin,
     "video_llava": VideoLlavaPlugin,
+    "florence2": Florence2Plugin,
 }
 
 

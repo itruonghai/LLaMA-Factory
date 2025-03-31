@@ -76,8 +76,12 @@ class SupervisedDatasetProcessor(DatasetProcessor):
                 input_ids = source_ids + target_ids + input_ids
                 labels = source_label + target_label + labels
             else:
-                input_ids += source_ids + target_ids
-                labels += source_label + target_label
+                if self.template.name == "florence2":
+                    input_ids = source_ids
+                    labels = target_ids
+                else:
+                    input_ids += source_ids + target_ids
+                    labels += source_label + target_label
 
         if self.template.efficient_eos:
             input_ids += [self.tokenizer.eos_token_id]
