@@ -158,7 +158,8 @@ def load_model(
             elif type(config) in AutoModelForTextToWaveform._model_mapping.keys():  # audio hack for qwen2_5_omni
                 load_class = AutoModelForTextToWaveform
             else:
-                load_class = AutoModelForCausalLM
+                # hard code for florence2
+                load_class = AutoModelForSeq2SeqLM
 
             if model_args.train_from_scratch:
                 model = load_class.from_config(config, trust_remote_code=model_args.trust_remote_code)

@@ -1,11 +1,12 @@
 ### model
-model_name_or_path: microsoft/Florence-2-large-ft
+model_name_or_path: microsoft/Florence-2-base-ft
 
 ### method
 stage: sft
 do_train: true
 finetuning_type: full
 deepspeed: examples/deepspeed/ds_z0_config.json
+trust_remote_code: true
 
 ### dataset
 dataset: florence2-geometry
@@ -32,7 +33,7 @@ warmup_ratio: 0.1
 bf16: true
 ddp_timeout: 180000000
 # florence2 image_processor will resize image to 768x768, so do not resize image too small
-image_resolution: 768
+# image_resolution: 768
 freeze_vision_tower: false
 
 ### eval
