@@ -157,10 +157,10 @@ def patch_model(
     ):
         gen_config.do_sample = True
 
-    if getattr(model.config, "model_type", None) not in ["minicpmv", "minicpmo"] and "GenerationMixin" not in str(
-        model.generate.__func__
-    ):
-        model.generate = MethodType(PreTrainedModel.generate, model)
+    # if getattr(model.config, "model_type", None) not in ["minicpmv", "minicpmo"] and "GenerationMixin" not in str(
+    #     model.generate.__func__
+    # ):
+    #     model.generate = MethodType(PreTrainedModel.generate, model)
 
     if add_valuehead:
         prepare_valuehead_model(model)

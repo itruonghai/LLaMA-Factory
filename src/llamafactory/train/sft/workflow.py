@@ -24,7 +24,7 @@ from ...extras.misc import calculate_tps, get_logits_processor
 from ...extras.ploting import plot_loss
 from ...model import load_model, load_tokenizer
 from ..trainer_utils import create_modelcard_and_push
-from .metric import ComputeAccuracy, ComputeSimilarity, eval_logit_processor
+from .metric import ComputeAccuracy, ComputeSimilarity, eval_logit_processor, ComputePolygonIoU
 from .trainer import CustomSeq2SeqTrainer
 
 
@@ -50,7 +50,6 @@ def run_sft(
     template = get_template_and_fix_tokenizer(tokenizer, data_args)
     dataset_module = get_dataset(template, model_args, data_args, training_args, stage="sft", **tokenizer_module)
     model = load_model(tokenizer, model_args, finetuning_args, training_args.do_train)
-
     if getattr(model, "is_quantized", False) and not training_args.do_train:
         setattr(model, "_hf_peft_config_loaded", True)  # hack here: make model compatible with prediction
 
@@ -73,7 +72,7 @@ def run_sft(
     # Metric utils
     metric_module = {}
     if training_args.predict_with_generate:
-        metric_module["compute_metrics"] = ComputeSimilarity(tokenizer=tokenizer)
+        metric_module["compute_metrics"] = ComputePolygonIoU(tokenizer=tokenizer)
     elif finetuning_args.compute_accuracy:
         metric_module["compute_metrics"] = ComputeAccuracy()
         metric_module["preprocess_logits_for_metrics"] = eval_logit_processor
@@ -123,6 +122,7 @@ def run_sft(
 
     # Predict
     if training_args.do_predict:
+
         logger.warning_rank0_once("Batch generation can be very slow. Consider using `scripts/vllm_infer.py` instead.")
         predict_results = trainer.predict(dataset_module["eval_dataset"], metric_key_prefix="predict", **gen_kwargs)
         trainer.log_metrics("predict", predict_results.metrics)
