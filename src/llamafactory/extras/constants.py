@@ -52,6 +52,9 @@ IGNORE_INDEX = -100
 
 IMAGE_PLACEHOLDER = os.environ.get("IMAGE_PLACEHOLDER", "<image>")
 
+REFSEG_PLACEHOLDER = os.environ.get("REFSEG_PLACEHOLDER", "<REFERRING_EXPRESSION_SEGMENTATION>")
+
+
 LAYERNORM_NAMES = {"norm", "ln"}
 
 LLAMABOARD_CONFIG = "llamaboard_config.yaml"

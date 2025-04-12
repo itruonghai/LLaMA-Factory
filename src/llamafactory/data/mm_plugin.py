@@ -28,7 +28,7 @@ import torch
 from transformers.image_utils import get_image_size, to_numpy_array
 from typing_extensions import override
 
-from ..extras.constants import AUDIO_PLACEHOLDER, IGNORE_INDEX, IMAGE_PLACEHOLDER, VIDEO_PLACEHOLDER
+from ..extras.constants import AUDIO_PLACEHOLDER, IGNORE_INDEX, IMAGE_PLACEHOLDER, VIDEO_PLACEHOLDER, REFSEG_PLACEHOLDER
 from ..extras.packages import (
     is_librosa_available,
     is_pillow_available,
@@ -1392,13 +1392,13 @@ class Qwen2VLPlugin(BasePlugin):
 
         for message in messages:
             content = message["content"]
-            while IMAGE_PLACEHOLDER in content:
+            while REFSEG_PLACEHOLDER in content:
                 if num_image_tokens >= len(image_grid_thw):
                     raise ValueError(f"`len(images)` is less than the number of {IMAGE_PLACEHOLDER} tokens.")
 
                 image_seqlen = image_grid_thw[num_image_tokens].prod() // merge_length if self.expand_mm_tokens else 1
                 content = content.replace(
-                    IMAGE_PLACEHOLDER, f"<|vision_start|>{self.image_token * image_seqlen}<|vision_end|>", 1
+                    REFSEG_PLACEHOLDER, f"<|vision_start|>{self.image_token * image_seqlen}<|vision_end|>", 1
                 )
                 num_image_tokens += 1
 

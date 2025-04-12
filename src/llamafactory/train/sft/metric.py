@@ -22,6 +22,8 @@ from typing import TYPE_CHECKING, Optional
 import numpy as np
 import torch
 from transformers.utils import is_jieba_available, is_nltk_available
+from shapely.geometry import Polygon
+import re
 
 from ...extras.constants import IGNORE_INDEX
 from ...extras.misc import numpify
@@ -130,5 +132,66 @@ class ComputeSimilarity:
             bleu_score = sentence_bleu([list(label)], list(pred), smoothing_function=SmoothingFunction().method3)
             self.score_dict["bleu-4"].append(round(bleu_score * 100, 4))
 
+        if compute_result:
+            return self._dump()
+
+
+@dataclass
+class ComputePolygonIoU:
+    """
+    Computes Intersection over Union (IoU) for polygons and supports `batch_eval_metrics`.
+    """
+    
+    tokenizer: "PreTrainedTokenizer"
+    def _dump(self) -> Optional[dict[str, float]]:
+        result = None
+        if hasattr(self, "score_dict"):
+            result = {k: float(np.mean(v)) for k, v in self.score_dict.items()}
+        
+        self.score_dict = {"polygon_iou": []}
+        return result
+    
+    def __post_init__(self):
+        self._dump()
+    
+    def __call__(self, eval_preds: "EvalPrediction", compute_result: bool = True) -> Optional[dict[str, float]]:
+        preds, labels = numpify(eval_preds.predictions), numpify(eval_preds.label_ids)
+        preds = np.where(preds != IGNORE_INDEX, preds, self.tokenizer.pad_token_id)
+        labels = np.where(labels != IGNORE_INDEX, labels, self.tokenizer.pad_token_id)
+        # Convert predictions and labels to text
+        decoded_preds = self.tokenizer.batch_decode(preds, skip_special_tokens=False)
+        decoded_labels = self.tokenizer.batch_decode(labels, skip_special_tokens=False)
+        for pred_text, label_text in zip(decoded_preds, decoded_labels):
+            # Extract location tokens from the text
+            pred_tokens = re.findall(r'<loc_(\d+)>', pred_text)
+            pred_tokens = [int(token) for token in pred_tokens]
+            label_tokens = re.findall(r'<loc_(\d+)>', label_text)
+            label_tokens = [int(token) for token in label_tokens]
+
+            
+            # Convert tokens to points (assuming tokens represent x,y coordinates)
+            if len(pred_tokens) % 2 != 0:
+                pred_tokens = pred_tokens[:-1]
+            pred_points = [(pred_tokens[i], pred_tokens[i + 1]) for i in range(0, len(pred_tokens), 2)]
+            label_points = [(label_tokens[i], label_tokens[i + 1]) for i in range(0, len(label_tokens), 2)]
+ 
+            # import pdb;pdb.set_trace()
+            # Create polygons from points
+            pred_polygon = Polygon(pred_points) if len(pred_points) >= 3 else None
+            label_polygon = Polygon(label_points) if len(label_points) >= 3 else None
+            
+            # Calculate IoUn
+            if pred_polygon is not None and label_polygon is not None:
+                try:
+                    intersection = pred_polygon.intersection(label_polygon).area
+                    union = pred_polygon.union(label_polygon).area
+                    iou = intersection / union if union > 0 else 0.0
+                except Exception:
+                    iou = 0.0
+            else:
+                iou = 0.0
+            
+            self.score_dict["polygon_iou"].append(iou)
+        
         if compute_result:
             return self._dump()
